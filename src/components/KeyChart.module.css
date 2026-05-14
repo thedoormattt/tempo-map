@@ -1,0 +1,51 @@
+.wrap {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  padding: 20px 16px 12px;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.hint {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+
+.overall {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.overallLabel {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--text-faint);
+}
+
+.major {
+  color: var(--accent);
+  font-weight: 500;
+}
+.minor {
+  color: #64a0d2;
+  font-weight: 500;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: crosshair;
+}

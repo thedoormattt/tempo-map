@@ -1,11 +1,17 @@
 .bar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   border: 1px solid var(--border);
   border-bottom: none;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 700px) {
+  .bar {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
   .bar {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -34,4 +40,8 @@
   color: var(--accent);
   font-weight: 400;
   letter-spacing: -0.01em;
+}
+
+.blue {
+  color: #64a0d2;
 }
