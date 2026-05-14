@@ -4,10 +4,14 @@ import DropZone from "./DropZone";
 import StatBar from "./StatBar";
 import BPMChart from "./BPMChart";
 import KeySection from "./KeySection";
+import HistoryPanel from "./HistoryPanel";
 import { analyseSong } from "@/lib/dsp";
-import { analyseWithBackend, pingBackend } from "@/lib/apiClient";
+import { analyseWithBackend } from "@/lib/apiClient";
+import { saveAnalysis } from "@/lib/db";
 import { curveStats } from "@/lib/utils";
 import styles from "./BPMAnalyser.module.css";
+
+const BACKEND_CONFIGURED = !!process.env.NEXT_PUBLIC_API_URL;
 
 export default function BPMAnalyser() {
   const [status, setStatus] = useState("idle");
@@ -17,51 +21,61 @@ export default function BPMAnalyser() {
   const [playhead, setPlayhead] = useState(null);
   const [audioURL, setAudioURL] = useState(null);
   const [mode, setMode] = useState("js");
-  const [backendLive, setBackendLive] = useState(null);
   const [usedMode, setUsedMode] = useState(null);
 
   const audioRef = useRef(null);
   const rafRef = useRef(null);
-
+  const modeRef = useRef(mode);
   useEffect(() => {
-    pingBackend().then(setBackendLive);
+    modeRef.current = mode;
+  }, [mode]);
+
+  const analyse = useCallback(async (file) => {
+    const currentMode = modeRef.current;
+    setStatus("loading");
+    setProgress(0);
+    setFileName(file.name);
+    setResult(null);
+    setPlayhead(null);
+    setUsedMode(null);
+    setAudioURL((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+
+    try {
+      let data;
+      if (currentMode === "python") {
+        data = await analyseWithBackend(file, setProgress);
+      } else {
+        const arrayBuffer = await file.arrayBuffer();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const decoded = await ctx.decodeAudioData(arrayBuffer);
+        data = analyseSong(decoded, setProgress);
+        ctx.close();
+      }
+      setAudioURL(URL.createObjectURL(file));
+      setResult(data);
+      setUsedMode(currentMode);
+      setStatus("done");
+      saveAnalysis(data, file.name).catch(console.warn);
+    } catch (err) {
+      console.error("Analysis error:", err);
+      setStatus("error");
+    }
   }, []);
 
-  const analyse = useCallback(
-    async (file) => {
-      setStatus("loading");
-      setProgress(0);
-      setFileName(file.name);
-      setResult(null);
-      setPlayhead(null);
-      setUsedMode(null);
-      setAudioURL((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
-
-      try {
-        let data;
-        if (mode === "python") {
-          data = await analyseWithBackend(file, setProgress);
-        } else {
-          const arrayBuffer = await file.arrayBuffer();
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const decoded = await ctx.decodeAudioData(arrayBuffer);
-          data = analyseSong(decoded, setProgress);
-          ctx.close();
-        }
-        setAudioURL(URL.createObjectURL(file));
-        setResult(data);
-        setUsedMode(mode);
-        setStatus("done");
-      } catch (err) {
-        console.error("Analysis error:", err);
-        setStatus("error");
-      }
-    },
-    [mode],
-  );
+  const handleRestore = useCallback((data, filename) => {
+    setAudioURL((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setResult(data);
+    setFileName(filename);
+    setPlayhead(null);
+    setUsedMode("history");
+    setStatus("done");
+  }, []);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -77,13 +91,10 @@ export default function BPMAnalyser() {
   }, [status, audioURL]);
 
   const stats = result?.bpmCurve?.length ? curveStats(result.bpmCurve) : null;
-  const backendAvailable =
-    process.env.NEXT_PUBLIC_API_URL && backendLive !== false;
 
   return (
     <main className={styles.page}>
       <div className={styles.hero}>
-        {/* ── Left: header + toggle ── */}
         <header className={styles.header}>
           <div className={styles.eyebrow}>
             <span className={styles.eyebrowAccent}>Tempo Map</span>
@@ -99,7 +110,7 @@ export default function BPMAnalyser() {
             Drop any audio file. BPM and key are analysed in sliding windows so
             you can see tempo drift, modulations, and breakdowns.
           </p>
-          {backendAvailable && (
+          {BACKEND_CONFIGURED && (
             <div className={styles.toggleWrap}>
               <button
                 className={`${styles.toggleBtn} ${mode === "js" ? styles.toggleActive : ""}`}
@@ -122,15 +133,15 @@ export default function BPMAnalyser() {
           )}
         </header>
 
-        {/* ── Right: drop zone ── */}
-        <section className={styles.section}>
+        <div className={styles.dropCol}>
           <DropZone
             status={status}
             progress={progress}
             fileName={fileName}
             onFile={analyse}
           />
-        </section>
+          <HistoryPanel onRestore={handleRestore} />
+        </div>
       </div>
 
       {status === "done" && result && stats && (
@@ -161,13 +172,18 @@ export default function BPMAnalyser() {
                 className={styles.audio}
               />
             )}
+            {!audioURL && usedMode === "history" && (
+              <p className={styles.reloadHint}>
+                Drop the file again to listen along
+              </p>
+            )}
           </div>
           <p className={styles.meta}>
             {result.sampleRate / 1000} kHz
             {" · "}
             {result.channels === 1 ? "Mono" : "Stereo"}
-            {" · "}
-            analysed {usedMode === "python" ? "with librosa" : "in-browser"}
+            {usedMode === "python" && " · analysed with librosa"}
+            {usedMode === "history" && " · restored from history"}
           </p>
         </section>
       )}
