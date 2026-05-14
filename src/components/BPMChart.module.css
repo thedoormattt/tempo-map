@@ -1,0 +1,21 @@
+.wrap {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-top: none;
+  padding: 20px 16px 12px;
+}
+
+.hint {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--text-faint);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: crosshair;
+}

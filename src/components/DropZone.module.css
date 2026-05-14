@@ -1,0 +1,101 @@
+.zone {
+  width: 100%;
+  border: 1px dashed var(--border-hi);
+  border-radius: 4px;
+  padding: 36px 24px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface);
+  transition: border-color 0.25s, background 0.25s;
+  outline: none;
+}
+
+.zone:hover,
+.zone:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-lo);
+}
+
+.zone.active {
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+.input {
+  display: none;
+}
+
+/* ── idle ── */
+.idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon {
+  font-size: 36px;
+  color: var(--text-dim);
+  line-height: 1;
+}
+
+.label {
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+}
+
+.hint {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+}
+
+/* ── loading ── */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.loadingLabel {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+}
+
+.track {
+  width: 60%;
+  height: 3px;
+  background: var(--border-hi);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.35s ease;
+}
+
+.pct {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* ── done / error ── */
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+.error {
+  color: var(--danger);
+}

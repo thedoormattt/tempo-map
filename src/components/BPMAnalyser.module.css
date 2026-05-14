@@ -1,0 +1,93 @@
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 24px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-height: 100dvh;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.eyebrowAccent { color: var(--accent); }
+.slash         { color: var(--border-hi); }
+.eyebrowDim    { color: var(--text-faint); }
+
+.heading {
+  font-size: clamp(28px, 5vw, 44px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #f0f0f0;
+}
+
+.headingAccent { color: var(--accent); }
+
+.sub {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-dim);
+  max-width: 56ch;
+  letter-spacing: 0.03em;
+}
+
+/* ── Section ── */
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Player ── */
+.player {
+  border: 1px solid var(--border);
+  border-top: none;
+  padding: 16px;
+  background: var(--surface);
+}
+
+.audio {
+  width: 100%;
+  display: block;
+  height: 36px;
+  border-radius: 2px;
+}
+
+/* ── Meta ── */
+.meta {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  padding: 10px 0 0;
+  text-align: right;
+}
+
+/* ── Footer ── */
+.footer {
+  margin-top: auto;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  color: var(--border-hi);
+  text-align: center;
+  padding-top: 32px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 480px) {
+  .page { padding: 32px 16px 48px; }
+}
