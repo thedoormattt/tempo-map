@@ -255,7 +255,13 @@ export default function KeyWheel({ keyCurve, overallKey }) {
                   x={majorLabelPos.x}
                   y={majorLabelPos.y + 4}
                   textAnchor="middle"
-                  fill={majorScore > 0.15 ? "#e8c96a" : "#555"}
+                  fill={
+                    majorScore > 0.15
+                      ? majorScore > 0.6
+                        ? "#1a1400"
+                        : "#e8c96a"
+                      : "#555"
+                  }
                   fontSize={majorScore > 0.4 ? 13 : 11}
                   fontFamily="monospace"
                   fontWeight={majorScore > 0.4 ? "bold" : "normal"}
@@ -268,7 +274,13 @@ export default function KeyWheel({ keyCurve, overallKey }) {
                   x={minorLabelPos.x}
                   y={minorLabelPos.y + 3}
                   textAnchor="middle"
-                  fill={minorScore > 0.15 ? "#64a0d2" : "#444"}
+                  fill={
+                    minorScore > 0.15
+                      ? minorScore > 0.6
+                        ? "#0a1520"
+                        : "#64a0d2"
+                      : "#444"
+                  }
                   fontSize={minorScore > 0.4 ? 11 : 9}
                   fontFamily="monospace"
                   fontWeight={minorScore > 0.4 ? "bold" : "normal"}
