@@ -312,22 +312,32 @@ export function computeBPMCurve(times, onsets, windowSec = 4, hopSec = 0.5) {
   const hopN = Math.round(hopSec * fps);
   const results = [];
 
+  // ── Pass 1: global tempo from a large centre window ──────────────────────
+  // Use the middle 60% of the track to avoid intros/outros
+  const startGlobal = Math.floor(onsets.length * 0.2);
+  const endGlobal = Math.floor(onsets.length * 0.8);
+  const globalSlice = onsets.slice(startGlobal, endGlobal);
+  const globalBPM = estimateBPM(globalSlice, fps) ?? 120;
+
+  // ── Pass 2: sliding window, octave-corrected against global ──────────────
   for (let i = 0; i + winN < onsets.length; i += hopN) {
     const slice = onsets.slice(i, i + winN);
     let bpm = estimateBPM(slice, fps);
     if (bpm === null) continue;
 
-    // Octave error correction — check against recent median to avoid
-    // locking onto a bad previous value propagating forward
-    if (results.length > 0) {
-      // Use median of last 4 readings as reference (more stable than just prev)
+    // Correct against global BPM first (anchors intro/outro)
+    const ratioG = bpm / globalBPM;
+    if (ratioG > 1.8 && ratioG < 2.2) bpm = bpm / 2;
+    if (ratioG > 0.45 && ratioG < 0.55) bpm = bpm * 2;
+
+    // Then check against recent median (catches genuine tempo changes)
+    if (results.length >= 4) {
       const recent = results.slice(-4).map((d) => d.bpm);
       const sorted = [...recent].sort((a, b) => a - b);
       const ref = sorted[Math.floor(sorted.length / 2)];
-
-      const ratio = bpm / ref;
-      if (ratio > 1.8 && ratio < 2.2) bpm = bpm / 2; // double tempo
-      if (ratio > 0.45 && ratio < 0.55) bpm = bpm * 2; // half tempo
+      const ratioR = bpm / ref;
+      if (ratioR > 1.8 && ratioR < 2.2) bpm = bpm / 2;
+      if (ratioR > 0.45 && ratioR < 0.55) bpm = bpm * 2;
     }
 
     results.push({ t: times[i] + windowSec / 2, bpm });
