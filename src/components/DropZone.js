@@ -2,7 +2,13 @@
 import { useRef } from "react";
 import styles from "./DropZone.module.css";
 
-export default function DropZone({ status, progress, fileName, onFile }) {
+export default function DropZone({
+  status,
+  progress,
+  fileName,
+  onFile,
+  retrying,
+}) {
   const inputRef = useRef(null);
 
   const handleDrop = (e) => {
@@ -45,11 +51,20 @@ export default function DropZone({ status, progress, fileName, onFile }) {
 
       {status === "loading" && (
         <div className={styles.loading}>
-          <p className={styles.loadingLabel}>ANALYSING {fileName}</p>
+          <p className={styles.loadingLabel}>
+            {retrying
+              ? "WAKING UP SERVER — RETRYING..."
+              : `ANALYSING ${fileName}`}
+          </p>
           <div className={styles.track}>
-            <div className={styles.fill} style={{ width: `${progress}%` }} />
+            <div
+              className={styles.fill}
+              style={{ width: retrying ? "100%" : `${progress}%` }}
+            />
           </div>
-          <p className={styles.pct}>{progress}%</p>
+          <p className={styles.pct}>
+            {retrying ? "cold start — this can take up to 30s" : `${progress}%`}
+          </p>
         </div>
       )}
 

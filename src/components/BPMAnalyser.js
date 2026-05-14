@@ -5,9 +5,11 @@ import StatBar from "./StatBar";
 import BPMChart from "./BPMChart";
 import KeyChart from "./KeyChart";
 import { analyseSong } from "@/lib/dsp";
-import { analyseWithBackend, pingBackend } from "@/lib/apiClient";
+import { analyseWithBackend } from "@/lib/apiClient";
 import { curveStats } from "@/lib/utils";
 import styles from "./BPMAnalyser.module.css";
+
+const BACKEND_CONFIGURED = !!process.env.NEXT_PUBLIC_API_URL;
 
 export default function BPMAnalyser() {
   const [status, setStatus] = useState("idle");
@@ -17,15 +19,11 @@ export default function BPMAnalyser() {
   const [playhead, setPlayhead] = useState(null);
   const [audioURL, setAudioURL] = useState(null);
   const [mode, setMode] = useState("js");
-  const [backendLive, setBackendLive] = useState(null);
   const [usedMode, setUsedMode] = useState(null);
+  const [retrying, setRetrying] = useState(false);
 
   const audioRef = useRef(null);
   const rafRef = useRef(null);
-
-  useEffect(() => {
-    pingBackend().then(setBackendLive);
-  }, []);
 
   const analyse = useCallback(
     async (file) => {
@@ -35,6 +33,7 @@ export default function BPMAnalyser() {
       setResult(null);
       setPlayhead(null);
       setUsedMode(null);
+      setRetrying(false);
       setAudioURL((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return null;
@@ -42,8 +41,28 @@ export default function BPMAnalyser() {
 
       try {
         let data;
+
         if (mode === "python") {
-          data = await analyseWithBackend(file, setProgress);
+          // Retry up to 3 times with increasing delays to handle Render cold starts
+          let lastError;
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+              if (attempt > 1) {
+                setRetrying(true);
+                // Wait before retrying: 15s, then 30s
+                await new Promise((r) =>
+                  setTimeout(r, attempt === 2 ? 15000 : 30000),
+                );
+              }
+              setRetrying(false);
+              data = await analyseWithBackend(file, setProgress);
+              break;
+            } catch (err) {
+              lastError = err;
+              console.warn(`Backend attempt ${attempt} failed:`, err.message);
+              if (attempt === 3) throw lastError;
+            }
+          }
         } else {
           const arrayBuffer = await file.arrayBuffer();
           const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -51,6 +70,7 @@ export default function BPMAnalyser() {
           data = analyseSong(decoded, setProgress);
           ctx.close();
         }
+
         setAudioURL(URL.createObjectURL(file));
         setResult(data);
         setUsedMode(mode);
@@ -77,8 +97,6 @@ export default function BPMAnalyser() {
   }, [status, audioURL]);
 
   const stats = result?.bpmCurve?.length ? curveStats(result.bpmCurve) : null;
-  const backendAvailable =
-    process.env.NEXT_PUBLIC_API_URL && backendLive !== false;
 
   return (
     <main className={styles.page}>
@@ -100,7 +118,8 @@ export default function BPMAnalyser() {
         </p>
       </header>
 
-      {backendAvailable && (
+      {/* Always show toggle if backend is configured */}
+      {BACKEND_CONFIGURED && (
         <div className={styles.toggleWrap}>
           <button
             className={`${styles.toggleBtn} ${mode === "js" ? styles.toggleActive : ""}`}
@@ -118,9 +137,6 @@ export default function BPMAnalyser() {
             High accuracy
             <span className={styles.toggleTag}>librosa</span>
           </button>
-          {backendLive === false && (
-            <span className={styles.toggleOffline}>backend offline</span>
-          )}
         </div>
       )}
 
@@ -130,6 +146,7 @@ export default function BPMAnalyser() {
           progress={progress}
           fileName={fileName}
           onFile={analyse}
+          retrying={retrying}
         />
       </section>
 
