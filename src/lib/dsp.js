@@ -5,7 +5,7 @@ import { dominantKey } from "./utils.js";
 
 // ─── Key detection constants ──────────────────────────────────────────────────
 
-export const NOTE_NAMES = [
+export const NOTE_NAMES_SHARP = [
   "C",
   "C#",
   "D",
@@ -19,6 +19,26 @@ export const NOTE_NAMES = [
   "A#",
   "B",
 ];
+export const NOTE_NAMES_FLAT = [
+  "C",
+  "Db",
+  "D",
+  "Eb",
+  "E",
+  "F",
+  "Gb",
+  "G",
+  "Ab",
+  "A",
+  "Bb",
+  "B",
+];
+
+export function rootToName(root, mode) {
+  // Major keys: use flats for black notes (Eb, Ab, Bb, Db, Gb)
+  // Minor keys: use sharps (C#m, F#m, G#m, D#m, A#m)
+  return mode === "major" ? NOTE_NAMES_FLAT[root] : NOTE_NAMES_SHARP[root];
+}
 
 const MAJOR_PROFILE = [
   6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88,
@@ -40,13 +60,13 @@ function buildProfiles() {
       {
         root,
         mode: "major",
-        label: `${NOTE_NAMES[root]} major`,
+        label: `${NOTE_NAMES_FLAT[root]} major`,
         profile: major,
       },
       {
         root,
         mode: "minor",
-        label: `${NOTE_NAMES[root]} minor`,
+        label: `${NOTE_NAMES_SHARP[root]} minor`,
         profile: minor,
       },
     );
@@ -89,7 +109,13 @@ export function chromaToKey(chroma) {
       best = kp;
     }
   }
-  return { ...best, confidence: bestScore };
+  const name = rootToName(best.root, best.mode);
+  return {
+    root: best.root,
+    mode: best.mode,
+    label: `${name} ${best.mode}`,
+    confidence: bestScore,
+  };
 }
 
 function rfftMagnitudes(signal) {
