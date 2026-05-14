@@ -7,10 +7,20 @@ export function formatTime(seconds) {
 export function curveStats(curve) {
   if (!curve.length) return null;
   const bpms = curve.map((d) => d.bpm);
-  const avg = bpms.reduce((a, b) => a + b, 0) / bpms.length;
+
+  // Mode BPM — most frequently occurring value when rounded to nearest integer
+  const bins = {};
+  for (const bpm of bpms) {
+    const bin = Math.round(bpm);
+    bins[bin] = (bins[bin] ?? 0) + 1;
+  }
+  const mode = parseInt(
+    Object.entries(bins).reduce((a, b) => (b[1] > a[1] ? b : a))[0],
+  );
+
   const max = curve.reduce((a, d) => (d.bpm > a.bpm ? d : a));
   const min = curve.reduce((a, d) => (d.bpm < a.bpm ? d : a));
-  return { avg: Math.round(avg), max, min };
+  return { avg: mode, max, min };
 }
 
 export function dominantKey(keyCurve) {
