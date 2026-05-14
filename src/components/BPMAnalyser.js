@@ -99,7 +99,7 @@ export default function BPMAnalyser() {
             Drop any audio file. BPM and key are analysed in sliding windows so
             you can see tempo drift, modulations, and breakdowns.
           </p>
-          {BACKEND_CONFIGURED && (
+          {backendAvailable && (
             <div className={styles.toggleWrap}>
               <button
                 className={`${styles.toggleBtn} ${mode === "js" ? styles.toggleActive : ""}`}
