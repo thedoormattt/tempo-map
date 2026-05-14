@@ -244,6 +244,7 @@ export function computeOnsetEnvelope(pcm, sampleRate) {
   const FRAME = 2048;
   const HOP = Math.round(sampleRate / 100);
   const BANDS = 8;
+  const BAND_WEIGHTS = [2.0, 1.8, 1.5, 1.2, 0.8, 0.6, 0.4, 0.3];
   const bandSize = Math.floor(FRAME / 2 / BANDS);
   const frames = Math.floor((pcm.length - FRAME) / HOP);
 
@@ -264,7 +265,7 @@ export function computeOnsetEnvelope(pcm, sampleRate) {
       }
       const mag = Math.sqrt(energy / bandSize);
       const diff = mag - prevMag[b];
-      if (diff > 0) flux += diff;
+      if (diff > 0) flux += diff * BAND_WEIGHTS[b];
       prevMag[b] = mag;
     }
     times[f] = start / sampleRate;
