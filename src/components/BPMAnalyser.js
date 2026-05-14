@@ -77,6 +77,12 @@ export default function BPMAnalyser() {
     setStatus("done");
   }, []);
 
+  const handleSeek = useCallback((t) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = t;
+    }
+  }, []);
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || status !== "done") return;
@@ -156,12 +162,14 @@ export default function BPMAnalyser() {
             duration={result.duration}
             playhead={playhead}
             avgBPM={stats.avg}
+            onSeek={handleSeek}
           />
           <KeySection
             keyCurve={result.keyCurve}
             duration={result.duration}
             playhead={playhead}
             overallKey={result.overallKey}
+            onSeek={handleSeek}
           />
           <div className={styles.player}>
             {audioURL && (

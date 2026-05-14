@@ -20,7 +20,13 @@ function keyStroke(mode) {
   return mode === "major" ? "rgba(232,201,106,0.4)" : "rgba(100,160,210,0.4)";
 }
 
-export default function KeyChart({ keyCurve, duration, playhead, overallKey }) {
+export default function KeyChart({
+  keyCurve,
+  duration,
+  playhead,
+  overallKey,
+  onSeek,
+}) {
   const [hovered, setHovered] = useState(null);
 
   const xS = (t) => (t / duration) * IW;
@@ -94,6 +100,16 @@ export default function KeyChart({ keyCurve, duration, playhead, overallKey }) {
     : 0;
   const tooltipY = hovered ? Math.max(0, laneY(hovered.label) - 2) : 0;
 
+  const onMouseClick = useCallback(
+    (e) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const mx = (e.clientX - rect.left - PAD.l) * (W / rect.width);
+      const t = (mx / IW) * duration;
+      if (t >= 0 && t <= duration) onSeek?.(t);
+    },
+    [duration],
+  );
+
   return (
     <div className={styles.wrap}>
       <div className={styles.header}>
@@ -117,6 +133,7 @@ export default function KeyChart({ keyCurve, duration, playhead, overallKey }) {
         className={styles.svg}
         onMouseMove={onMouseMove}
         onMouseLeave={() => setHovered(null)}
+        onClick={onMouseClick}
         aria-label="Key over time swimlane chart"
         role="img"
       >
