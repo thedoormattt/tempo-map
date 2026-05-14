@@ -1,13 +1,13 @@
 .wrap {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: 1fr 360px;
   border: 1px solid var(--border);
   border-top: none;
 }
 
 .chart {
   border-right: 1px solid var(--border);
-  min-width: 0; /* prevent overflow */
+  min-width: 0;
 }
 
 .wheel {
@@ -22,7 +22,6 @@
   .wrap {
     grid-template-columns: 1fr;
   }
-
   .chart {
     border-right: none;
     border-bottom: 1px solid var(--border);
