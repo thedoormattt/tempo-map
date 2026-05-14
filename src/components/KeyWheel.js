@@ -2,7 +2,12 @@
 import { useMemo, useState, useCallback } from "react";
 import styles from "./KeyWheel.module.css";
 
-const FIFTHS_ORDER = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+// Circle of fifths order (clockwise from top) — root indices
+const FIFTHS_ORDER = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5]; // C G D A E B F# Db Ab Eb Bb F
+
+// Relative minor root = major root - 3 semitones (mod 12)
+// C→Am, G→Em, D→Bm, A→F#m, E→C#m, B→G#m, F#→D#m, Db→Bbm, Ab→Fm, Eb→Cm, Bb→Gm, F→Dm
+const RELATIVE_MINOR = FIFTHS_ORDER.map((root) => (root - 3 + 12) % 12);
 
 const NOTE_NAMES_SHARP = [
   "C",
@@ -93,11 +98,13 @@ export default function KeyWheel({ keyCurve, overallKey }) {
   }, [keyCurve]);
 
   const sectors = useMemo(() => {
-    return FIFTHS_ORDER.map((root, i) => {
-      const majorLabel = `${rootToName(root, "major")} major`;
-      const minorLabel = `${rootToName(root, "minor")} minor`;
+    return FIFTHS_ORDER.map((majorRoot, i) => {
+      const minorRoot = RELATIVE_MINOR[i];
+      const majorLabel = `${rootToName(majorRoot, "major")} major`;
+      const minorLabel = `${rootToName(minorRoot, "minor")} minor`;
       return {
-        root,
+        majorRoot,
+        minorRoot,
         i,
         majorLabel,
         minorLabel,
@@ -199,7 +206,8 @@ export default function KeyWheel({ keyCurve, overallKey }) {
           {/* Sectors */}
           {sectors.map(
             ({
-              root,
+              majorRoot,
+              minorRoot,
               i,
               majorLabel,
               minorLabel,
@@ -209,22 +217,23 @@ export default function KeyWheel({ keyCurve, overallKey }) {
               minorPct,
               midAngle,
             }) => {
-              const isOverallSector = overallKey?.root === root;
+              const isOverallMajorSector =
+                overallKey?.root === majorRoot && overallKey?.mode === "major";
+              const isOverallMinorSector =
+                overallKey?.root === minorRoot && overallKey?.mode === "minor";
               const labelPos = polarToXY(midAngle, R_LABEL_MAJOR);
               const minorLabelPos = polarToXY(midAngle, R_LABEL_MINOR);
-              const name = rootToName(root, "major");
-              const minorName = rootToName(root, "minor");
+              const name = rootToName(majorRoot, "major");
+              const minorName = rootToName(minorRoot, "minor");
 
               return (
-                <g key={root}>
+                <g key={majorRoot}>
                   {/* Major sector */}
                   <path
                     d={sectorPath(i, 12, R_MINOR + 2, R_MAJOR)}
                     fill={majorFill(majorScore)}
-                    stroke={
-                      isOverallSector && isOverallMajor ? "#e8c96a" : "#1a1a1a"
-                    }
-                    strokeWidth={isOverallSector && isOverallMajor ? 1.5 : 0.5}
+                    stroke={isOverallMajorSector ? "#e8c96a" : "#1a1a1a"}
+                    strokeWidth={isOverallMajorSector ? 1.5 : 0.5}
                     style={{ cursor: majorScore > 0 ? "pointer" : "default" }}
                     onMouseEnter={() =>
                       majorScore > 0 &&
@@ -240,10 +249,8 @@ export default function KeyWheel({ keyCurve, overallKey }) {
                   <path
                     d={sectorPath(i, 12, 46, R_MINOR - 2)}
                     fill={minorFill(minorScore)}
-                    stroke={
-                      isOverallSector && !isOverallMajor ? "#64a0d2" : "#1a1a1a"
-                    }
-                    strokeWidth={isOverallSector && !isOverallMajor ? 1.5 : 0.5}
+                    stroke={isOverallMinorSector ? "#64a0d2" : "#1a1a1a"}
+                    strokeWidth={isOverallMinorSector ? 1.5 : 0.5}
                     style={{ cursor: minorScore > 0 ? "pointer" : "default" }}
                     onMouseEnter={() =>
                       minorScore > 0 &&
