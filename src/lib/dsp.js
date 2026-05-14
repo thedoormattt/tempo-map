@@ -253,9 +253,21 @@ export function computeOnsetEnvelope(pcm, sampleRate) {
   const onsets = new Float32Array(frames);
   const prevMag = new Float32Array(BANDS);
 
+  const lowEnergyThreshold = 0.001;
+
   for (let f = 0; f < frames; f++) {
     const start = f * HOP;
     let flux = 0;
+
+    // Measure low-band energy to decide whether to apply weighting
+    let lowEnergy = 0;
+    for (let i = 0; i < bandSize * 2; i++) {
+      lowEnergy += pcm[start + i] * pcm[start + i];
+    }
+    lowEnergy /= bandSize * 2;
+    // If low-frequency energy is weak (no kick), use equal weights
+    const useWeights = lowEnergy > lowEnergyThreshold;
+
     for (let b = 0; b < BANDS; b++) {
       let energy = 0;
       const bStart = b * bandSize;
@@ -265,9 +277,10 @@ export function computeOnsetEnvelope(pcm, sampleRate) {
       }
       const mag = Math.sqrt(energy / bandSize);
       const diff = mag - prevMag[b];
-      if (diff > 0) flux += diff * BAND_WEIGHTS[b];
+      if (diff > 0) flux += diff * (useWeights ? BAND_WEIGHTS[b] : 1.0);
       prevMag[b] = mag;
     }
+
     times[f] = start / sampleRate;
     onsets[f] = flux;
   }
