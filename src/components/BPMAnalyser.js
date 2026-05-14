@@ -43,26 +43,7 @@ export default function BPMAnalyser() {
         let data;
 
         if (mode === "python") {
-          // Retry up to 3 times with increasing delays to handle Render cold starts
-          let lastError;
-          for (let attempt = 1; attempt <= 3; attempt++) {
-            try {
-              if (attempt > 1) {
-                setRetrying(true);
-                // Wait before retrying: 15s, then 30s
-                await new Promise((r) =>
-                  setTimeout(r, attempt === 2 ? 15000 : 30000),
-                );
-              }
-              setRetrying(false);
-              data = await analyseWithBackend(file, setProgress);
-              break;
-            } catch (err) {
-              lastError = err;
-              console.warn(`Backend attempt ${attempt} failed:`, err.message);
-              if (attempt === 3) throw lastError;
-            }
-          }
+          data = await analyseWithBackend(file, setProgress);
         } else {
           const arrayBuffer = await file.arrayBuffer();
           const ctx = new (window.AudioContext || window.webkitAudioContext)();

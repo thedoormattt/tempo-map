@@ -15,20 +15,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
  */
 export async function analyseWithBackend(file, onProgress) {
   if (!API_URL) {
-    throw new Error(
-      "NEXT_PUBLIC_API_URL is not set. Add it to .env.local or your Vercel environment variables.",
-    );
+    throw new Error("NEXT_PUBLIC_API_URL is not set.");
   }
 
-  // Use XMLHttpRequest so we get upload progress events
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const form = new FormData();
     form.append("file", file);
 
     xhr.open("POST", `${API_URL}/analyse`);
+    xhr.timeout = 180_000; // 3 minutes
 
-    // Upload progress (0 → 90%) — the remaining 10% is server processing time
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
         onProgress?.(Math.round((e.loaded / e.total) * 90));
@@ -54,8 +51,8 @@ export async function analyseWithBackend(file, onProgress) {
     };
 
     xhr.onerror = () => reject(new Error("Network error contacting backend"));
-    xhr.ontimeout = () => reject(new Error("Backend request timed out"));
-    xhr.timeout = 120_000; // 2 min — large files can take a while on a free Render instance
+    xhr.ontimeout = () =>
+      reject(new Error("Request timed out after 3 minutes"));
 
     xhr.send(form);
   });
