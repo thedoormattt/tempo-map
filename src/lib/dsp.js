@@ -1,3 +1,4 @@
+import { dominantKey } from "./utils.js";
 // ─── dsp.js ──────────────────────────────────────────────────────────────────
 // All signal-processing helpers for BPM and key analysis.
 // Pure functions — no DOM, no side-effects, fully testable.
@@ -319,10 +320,12 @@ export function analyseSong(decoded, onProgress) {
   const bpmCurve = smoothCurve(raw);
 
   report(60);
-  const overallKey = computeOverallKey(pcm, decoded.sampleRate);
-
-  report(75);
   const keyCurve = computeKeyCurve(pcm, decoded.sampleRate, decoded.duration);
+
+  report(90);
+  // Derive overall key from the curve — consistent with what the chart shows
+  const overallKey =
+    dominantKey(keyCurve) ?? computeOverallKey(pcm, decoded.sampleRate);
 
   report(100);
   return {

@@ -29,5 +29,14 @@ export function dominantKey(keyCurve) {
   for (const d of keyCurve) {
     scores[d.label] = (scores[d.label] ?? 0) + Math.max(0, d.confidence);
   }
-  return Object.entries(scores).reduce((a, b) => (b[1] > a[1] ? b : a))[0];
+  const bestLabel = Object.entries(scores).reduce((a, b) =>
+    b[1] > a[1] ? b : a,
+  )[0];
+  const match = keyCurve.find((d) => d.label === bestLabel);
+  return {
+    label: bestLabel,
+    root: match.root,
+    mode: match.mode,
+    confidence: scores[bestLabel] / keyCurve.length,
+  };
 }
