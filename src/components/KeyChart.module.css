@@ -1,7 +1,5 @@
 .wrap {
   background: var(--bg);
-  border: 1px solid var(--border);
-  border-top: none;
   padding: 20px 16px 12px;
 }
 
@@ -34,14 +32,8 @@
   color: var(--text-faint);
 }
 
-.major {
-  color: var(--accent);
-  font-weight: 500;
-}
-.minor {
-  color: #64a0d2;
-  font-weight: 500;
-}
+.major { color: var(--accent); font-weight: 500; }
+.minor { color: #64a0d2;       font-weight: 500; }
 
 .svg {
   width: 100%;

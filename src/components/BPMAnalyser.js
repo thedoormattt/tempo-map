@@ -1,68 +1,61 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
 import DropZone from "./DropZone";
-import StatBar from "./StatBar";
+import StatBar  from "./StatBar";
 import BPMChart from "./BPMChart";
-import KeyChart from "./KeyChart";
-import { analyseSong } from "@/lib/dsp";
-import { analyseWithBackend } from "@/lib/apiClient";
-import { curveStats } from "@/lib/utils";
+import KeySection from "./KeySection";
+import { analyseSong }       from "@/lib/dsp";
+import { analyseWithBackend, pingBackend } from "@/lib/apiClient";
+import { curveStats }        from "@/lib/utils";
 import styles from "./BPMAnalyser.module.css";
 
-const BACKEND_CONFIGURED = !!process.env.NEXT_PUBLIC_API_URL;
-
 export default function BPMAnalyser() {
-  const [status, setStatus] = useState("idle");
-  const [progress, setProgress] = useState(0);
-  const [fileName, setFileName] = useState("");
-  const [result, setResult] = useState(null);
-  const [playhead, setPlayhead] = useState(null);
-  const [audioURL, setAudioURL] = useState(null);
-  const [mode, setMode] = useState("js");
-  const [usedMode, setUsedMode] = useState(null);
-  const [retrying, setRetrying] = useState(false);
+  const [status,      setStatus]      = useState("idle");
+  const [progress,    setProgress]    = useState(0);
+  const [fileName,    setFileName]    = useState("");
+  const [result,      setResult]      = useState(null);
+  const [playhead,    setPlayhead]    = useState(null);
+  const [audioURL,    setAudioURL]    = useState(null);
+  const [mode,        setMode]        = useState("js");
+  const [backendLive, setBackendLive] = useState(null);
+  const [usedMode,    setUsedMode]    = useState(null);
 
   const audioRef = useRef(null);
-  const rafRef = useRef(null);
+  const rafRef   = useRef(null);
 
-  const analyse = useCallback(
-    async (file) => {
-      setStatus("loading");
-      setProgress(0);
-      setFileName(file.name);
-      setResult(null);
-      setPlayhead(null);
-      setUsedMode(null);
-      setRetrying(false);
-      setAudioURL((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
+  useEffect(() => {
+    pingBackend().then(setBackendLive);
+  }, []);
 
-      try {
-        let data;
+  const analyse = useCallback(async (file) => {
+    setStatus("loading");
+    setProgress(0);
+    setFileName(file.name);
+    setResult(null);
+    setPlayhead(null);
+    setUsedMode(null);
+    setAudioURL((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
 
-        if (mode === "python") {
-          data = await analyseWithBackend(file, setProgress);
-        } else {
-          const arrayBuffer = await file.arrayBuffer();
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          const decoded = await ctx.decodeAudioData(arrayBuffer);
-          data = analyseSong(decoded, setProgress);
-          ctx.close();
-        }
-
-        setAudioURL(URL.createObjectURL(file));
-        setResult(data);
-        setUsedMode(mode);
-        setStatus("done");
-      } catch (err) {
-        console.error("Analysis error:", err);
-        setStatus("error");
+    try {
+      let data;
+      if (mode === "python") {
+        data = await analyseWithBackend(file, setProgress);
+      } else {
+        const arrayBuffer = await file.arrayBuffer();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const decoded = await ctx.decodeAudioData(arrayBuffer);
+        data = analyseSong(decoded, setProgress);
+        ctx.close();
       }
-    },
-    [mode],
-  );
+      setAudioURL(URL.createObjectURL(file));
+      setResult(data);
+      setUsedMode(mode);
+      setStatus("done");
+    } catch (err) {
+      console.error("Analysis error:", err);
+      setStatus("error");
+    }
+  }, [mode]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -72,12 +65,11 @@ export default function BPMAnalyser() {
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [status, audioURL]);
 
   const stats = result?.bpmCurve?.length ? curveStats(result.bpmCurve) : null;
+  const backendAvailable = process.env.NEXT_PUBLIC_API_URL && backendLive !== false;
 
   return (
     <main className={styles.page}>
@@ -88,19 +80,17 @@ export default function BPMAnalyser() {
           <span className={styles.eyebrowDim}>BPM + KEY ANALYSER</span>
         </div>
         <h1 className={styles.heading}>
-          How does the tempo and key
-          <br />
+          How does the tempo and key<br />
           <span className={styles.headingAccent}>change over time?</span>
         </h1>
         <p className={styles.sub}>
           Drop any audio file. BPM and key are both analysed in sliding windows
-          so you can see tempo drift, modulations, and breakdowns — not just
-          single average values.
+          so you can see tempo drift, modulations, and breakdowns — not just single
+          average values.
         </p>
       </header>
 
-      {/* Always show toggle if backend is configured */}
-      {BACKEND_CONFIGURED && (
+      {backendAvailable && (
         <div className={styles.toggleWrap}>
           <button
             className={`${styles.toggleBtn} ${mode === "js" ? styles.toggleActive : ""}`}
@@ -118,6 +108,9 @@ export default function BPMAnalyser() {
             High accuracy
             <span className={styles.toggleTag}>librosa</span>
           </button>
+          {backendLive === false && (
+            <span className={styles.toggleOffline}>backend offline</span>
+          )}
         </div>
       )}
 
@@ -127,24 +120,19 @@ export default function BPMAnalyser() {
           progress={progress}
           fileName={fileName}
           onFile={analyse}
-          retrying={retrying}
         />
       </section>
 
       {status === "done" && result && stats && (
         <section className={styles.section}>
-          <StatBar
-            stats={stats}
-            duration={result.duration}
-            overallKey={result.overallKey}
-          />
+          <StatBar stats={stats} duration={result.duration} overallKey={result.overallKey} />
           <BPMChart
             curve={result.bpmCurve}
             duration={result.duration}
             playhead={playhead}
             avgBPM={stats.avg}
           />
-          <KeyChart
+          <KeySection
             keyCurve={result.keyCurve}
             duration={result.duration}
             playhead={playhead}
@@ -152,12 +140,7 @@ export default function BPMAnalyser() {
           />
           <div className={styles.player}>
             {audioURL && (
-              <audio
-                ref={audioRef}
-                src={audioURL}
-                controls
-                className={styles.audio}
-              />
+              <audio ref={audioRef} src={audioURL} controls className={styles.audio} />
             )}
           </div>
           <p className={styles.meta}>

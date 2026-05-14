@@ -1,0 +1,22 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0 8px;
+}
+
+.hint {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.svg {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  display: block;
+}

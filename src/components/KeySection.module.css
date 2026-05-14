@@ -1,0 +1,30 @@
+.wrap {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  border: 1px solid var(--border);
+  border-top: none;
+}
+
+.chart {
+  border-right: 1px solid var(--border);
+  min-width: 0; /* prevent overflow */
+}
+
+.wheel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: var(--bg);
+}
+
+@media (max-width: 700px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .chart {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
