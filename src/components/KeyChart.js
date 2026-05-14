@@ -1,52 +1,69 @@
 "use client";
-import { useState, useCallback } from "react";
-import { NOTE_NAMES } from "@/lib/dsp";
+import { useState, useCallback, useMemo } from "react";
 import { formatTime } from "@/lib/utils";
 import styles from "./KeyChart.module.css";
 
 const W = 800;
-const H = 200;
-const PAD = { t: 20, r: 20, b: 44, l: 54 };
+const PAD = { t: 12, r: 20, b: 44, l: 72 };
 const IW = W - PAD.l - PAD.r;
-const IH = H - PAD.t - PAD.b;
-
-const MAJOR_KEYS = NOTE_NAMES.map((n) => `${n} major`);
-const MINOR_KEYS = NOTE_NAMES.map((n) => `${n} minor`);
-const ALL_KEYS = [...MAJOR_KEYS, ...MINOR_KEYS];
+const LANE_H = 18;
+const LANE_GAP = 3;
 
 function keyColour(mode, confidence) {
-  const alpha = 0.35 + Math.max(0, Math.min(confidence, 1)) * 0.65;
+  const alpha = 0.3 + Math.max(0, Math.min(confidence, 1)) * 0.7;
   return mode === "major"
     ? `rgba(232, 201, 106, ${alpha})`
     : `rgba(100, 160, 210, ${alpha})`;
+}
+
+function keyStroke(mode) {
+  return mode === "major" ? "rgba(232,201,106,0.4)" : "rgba(100,160,210,0.4)";
 }
 
 export default function KeyChart({ keyCurve, duration, playhead, overallKey }) {
   const [hovered, setHovered] = useState(null);
 
   const xS = (t) => (t / duration) * IW;
-  const yS = (label) => {
-    const idx = ALL_KEYS.indexOf(label);
-    return idx === -1 ? 0 : (idx / (ALL_KEYS.length - 1)) * IH;
+
+  const { lanes, laneIndex } = useMemo(() => {
+    const counts = {};
+    for (const d of keyCurve) {
+      counts[d.label] = (counts[d.label] ?? 0) + 1;
+    }
+    const sorted = Object.keys(counts).sort((a, b) => {
+      if (overallKey && a === overallKey.label) return -1;
+      if (overallKey && b === overallKey.label) return 1;
+      return counts[b] - counts[a];
+    });
+    const index = {};
+    sorted.forEach((k, i) => {
+      index[k] = i;
+    });
+    return { lanes: sorted, laneIndex: index };
+  }, [keyCurve, overallKey]);
+
+  const IH = lanes.length * (LANE_H + LANE_GAP) + 8;
+  const H = IH + PAD.t + PAD.b;
+
+  const laneY = (label) => {
+    const i = laneIndex[label] ?? 0;
+    return i * (LANE_H + LANE_GAP);
   };
+
+  const hopSec = keyCurve.length > 1 ? keyCurve[1].t - keyCurve[0].t : 2;
+
+  const segments = keyCurve.map((d) => ({
+    x: xS(Math.max(0, d.t - hopSec / 2)),
+    width: xS(hopSec) - 1,
+    y: laneY(d.label),
+    label: d.label,
+    mode: d.mode,
+    confidence: d.confidence,
+    t: d.t,
+  }));
 
   const xTicks = [];
   for (let t = 0; t <= duration; t += 30) xTicks.push(t);
-
-  const segments = keyCurve.slice(0, -1).map((d, i) => {
-    const next = keyCurve[i + 1];
-    return {
-      x: xS(d.t),
-      width: xS(next.t) - xS(d.t),
-      y: yS(d.label),
-      label: d.label,
-      mode: d.mode,
-      confidence: d.confidence,
-      t: d.t,
-    };
-  });
-
-  const dots = keyCurve.map((d) => ({ cx: xS(d.t), cy: yS(d.label), ...d }));
 
   const playheadX = playhead != null ? xS(playhead) : null;
 
@@ -64,15 +81,18 @@ export default function KeyChart({ keyCurve, duration, playhead, overallKey }) {
           best = d;
         }
       }
-      setHovered(best && bestDist * (IW / duration) < 30 ? best : null);
+      setHovered(best && bestDist * (IW / duration) < 20 ? best : null);
     },
     [keyCurve, duration],
   );
 
-  const tooltipX = (d) => {
-    const x = xS(d.t);
-    return x > IW - 110 ? x - 100 : x + 8;
-  };
+  const tooltipT = hovered ? xS(hovered.t) : 0;
+  const tooltipX = hovered
+    ? tooltipT > IW - 110
+      ? tooltipT - 108
+      : tooltipT + 8
+    : 0;
+  const tooltipY = hovered ? Math.max(0, laneY(hovered.label) - 2) : 0;
 
   return (
     <div className={styles.wrap}>
@@ -97,62 +117,64 @@ export default function KeyChart({ keyCurve, duration, playhead, overallKey }) {
         className={styles.svg}
         onMouseMove={onMouseMove}
         onMouseLeave={() => setHovered(null)}
-        aria-label="Key over time chart"
+        aria-label="Key over time swimlane chart"
         role="img"
       >
         <defs>
-          <clipPath id="keyClip">
+          <clipPath id="keySwimClip">
             <rect x="0" y="0" width={IW} height={IH} />
           </clipPath>
         </defs>
 
         <g transform={`translate(${PAD.l},${PAD.t})`}>
-          <line
-            x1={0}
-            y1={IH / 2}
-            x2={IW}
-            y2={IH / 2}
-            stroke="#1e1e1e"
-            strokeWidth={1}
-            strokeDasharray="3 3"
-          />
+          {lanes.map((label) => {
+            const isOverall = overallKey?.label === label;
+            return (
+              <rect
+                key={label}
+                x={0}
+                y={laneY(label)}
+                width={IW}
+                height={LANE_H}
+                fill={
+                  isOverall
+                    ? "rgba(255,255,255,0.03)"
+                    : "rgba(255,255,255,0.01)"
+                }
+                rx={2}
+              />
+            );
+          })}
 
           {segments.map((s, i) => (
             <rect
               key={i}
-              clipPath="url(#keyClip)"
+              clipPath="url(#keySwimClip)"
               x={s.x}
-              y={s.y - 4}
-              width={Math.max(s.width - 1, 1)}
-              height={8}
+              y={s.y + 1}
+              width={Math.max(s.width, 2)}
+              height={LANE_H - 2}
               rx={2}
               fill={keyColour(s.mode, s.confidence)}
+              stroke={
+                hovered?.label === s.label && Math.abs(hovered.t - s.t) < 1
+                  ? keyStroke(s.mode)
+                  : "none"
+              }
             />
           ))}
 
-          {dots.length > 1 && (
-            <polyline
-              clipPath="url(#keyClip)"
-              points={dots.map((d) => `${d.cx},${d.cy}`).join(" ")}
-              fill="none"
-              stroke="#333"
+          {hovered && (
+            <line
+              x1={xS(hovered.t)}
+              y1={0}
+              x2={xS(hovered.t)}
+              y2={IH}
+              stroke="#fff"
               strokeWidth={1}
-              strokeLinejoin="round"
+              opacity={0.15}
             />
           )}
-
-          {dots.map((d, i) => (
-            <circle
-              key={i}
-              clipPath="url(#keyClip)"
-              cx={d.cx}
-              cy={d.cy}
-              r={3}
-              fill={keyColour(d.mode, d.confidence)}
-              stroke="#0d0d0d"
-              strokeWidth={1}
-            />
-          ))}
 
           {playheadX != null && playheadX >= 0 && playheadX <= IW && (
             <line
@@ -166,95 +188,77 @@ export default function KeyChart({ keyCurve, duration, playhead, overallKey }) {
             />
           )}
 
+          {lanes.map((label) => {
+            const isOverall = overallKey?.label === label;
+            const mode =
+              keyCurve.find((d) => d.label === label)?.mode ?? "major";
+            const shortLabel = label
+              .replace(" major", "M")
+              .replace(" minor", "m");
+            return (
+              <text
+                key={label}
+                x={-6}
+                y={laneY(label) + LANE_H / 2 + 4}
+                textAnchor="end"
+                fill={
+                  isOverall
+                    ? mode === "major"
+                      ? "#e8c96a"
+                      : "#64a0d2"
+                    : "#555"
+                }
+                fontSize={isOverall ? 11 : 10}
+                fontFamily="monospace"
+                fontWeight={isOverall ? "bold" : "normal"}
+              >
+                {shortLabel}
+              </text>
+            );
+          })}
+
           {hovered && (
-            <>
-              <circle
-                cx={xS(hovered.t)}
-                cy={yS(hovered.label)}
-                r={5}
-                fill={keyColour(hovered.mode, hovered.confidence)}
-                stroke="#fff"
+            <g transform={`translate(${tooltipX},${tooltipY})`}>
+              <rect
+                x={0}
+                y={0}
+                width={100}
+                height={44}
+                rx={3}
+                fill="#111"
+                stroke={hovered.mode === "major" ? "#e8c96a" : "#64a0d2"}
                 strokeWidth={1}
               />
-              <g
-                transform={`translate(${tooltipX(hovered)},${Math.max(4, yS(hovered.label) - 42)})`}
+              <text
+                x={8}
+                y={14}
+                fill="#666"
+                fontSize={10}
+                fontFamily="monospace"
               >
-                <rect
-                  x={0}
-                  y={0}
-                  width={98}
-                  height={44}
-                  rx={3}
-                  fill="#111"
-                  stroke={hovered.mode === "major" ? "#e8c96a" : "#64a0d2"}
-                  strokeWidth={1}
-                />
-                <text
-                  x={8}
-                  y={14}
-                  fill="#666"
-                  fontSize={10}
-                  fontFamily="monospace"
-                >
-                  {formatTime(hovered.t)}
-                </text>
-                <text
-                  x={8}
-                  y={28}
-                  fill="#f0f0f0"
-                  fontSize={13}
-                  fontFamily="monospace"
-                  fontWeight="bold"
-                >
-                  {hovered.label}
-                </text>
-                <text
-                  x={8}
-                  y={40}
-                  fill="#555"
-                  fontSize={9}
-                  fontFamily="monospace"
-                >
-                  {Math.round(hovered.confidence * 100)}% confidence
-                </text>
-              </g>
-            </>
+                {formatTime(hovered.t)}
+              </text>
+              <text
+                x={8}
+                y={28}
+                fill="#f0f0f0"
+                fontSize={12}
+                fontFamily="monospace"
+                fontWeight="bold"
+              >
+                {hovered.label}
+              </text>
+              <text
+                x={8}
+                y={40}
+                fill="#555"
+                fontSize={9}
+                fontFamily="monospace"
+              >
+                {Math.round(hovered.confidence * 100)}% conf
+              </text>
+            </g>
           )}
-
-          {[0, 6, 12, 18].map((idx) => (
-            <text
-              key={idx}
-              x={-6}
-              y={yS(ALL_KEYS[idx]) + 4}
-              textAnchor="end"
-              fill="#444"
-              fontSize={9}
-              fontFamily="monospace"
-            >
-              {ALL_KEYS[idx].replace(" major", "M").replace(" minor", "m")}
-            </text>
-          ))}
-
-          <text
-            x={-6}
-            y={IH / 4}
-            textAnchor="end"
-            fill="#555"
-            fontSize={8}
-            fontFamily="monospace"
-          >
-            MAJOR
-          </text>
-          <text
-            x={-6}
-            y={(IH * 3) / 4}
-            textAnchor="end"
-            fill="#555"
-            fontSize={8}
-            fontFamily="monospace"
-          >
-            MINOR
-          </text>
 
           {xTicks.map((t) => (
             <g key={t} transform={`translate(${xS(t)},${IH})`}>
