@@ -253,20 +253,37 @@ export function computeOnsetEnvelope(pcm, sampleRate) {
   const onsets = new Float32Array(frames);
   const prevMag = new Float32Array(BANDS);
 
-  const lowEnergyThreshold = 0.001;
-
+  // ── Pre-pass: find max low-band energy across whole track ─────────────────
+  // Two lowest bands (indices 0-1) correspond to kick/bass frequency range.
+  // Doing this upfront makes the weighting decision non-causal — every frame,
+  // including the intro, is judged relative to the full track's low-end energy.
+  let maxLowEnergy = 0;
   for (let f = 0; f < frames; f++) {
     const start = f * HOP;
-    let flux = 0;
-
-    // Measure low-band energy to decide whether to apply weighting
     let lowEnergy = 0;
     for (let i = 0; i < bandSize * 2; i++) {
       lowEnergy += pcm[start + i] * pcm[start + i];
     }
     lowEnergy /= bandSize * 2;
-    // If low-frequency energy is weak (no kick), use equal weights
-    const useWeights = lowEnergy > lowEnergyThreshold;
+    if (lowEnergy > maxLowEnergy) maxLowEnergy = lowEnergy;
+  }
+
+  // ── Main pass: onset envelope with adaptive band weighting ────────────────
+  for (let f = 0; f < frames; f++) {
+    const start = f * HOP;
+    let flux = 0;
+
+    // Compute low-band energy for this frame
+    let lowEnergy = 0;
+    for (let i = 0; i < bandSize * 2; i++) {
+      lowEnergy += pcm[start + i] * pcm[start + i];
+    }
+    lowEnergy /= bandSize * 2;
+
+    // Apply low-frequency weighting only when kick/bass is present —
+    // defined as this frame having >10% of the track's peak low-band energy.
+    // Falls back to equal weights during sparse sections (no kick).
+    const useWeights = maxLowEnergy > 0 && lowEnergy / maxLowEnergy > 0.1;
 
     for (let b = 0; b < BANDS; b++) {
       let energy = 0;
@@ -285,9 +302,11 @@ export function computeOnsetEnvelope(pcm, sampleRate) {
     onsets[f] = flux;
   }
 
+  // Normalise to [0, 1]
   let maxO = 0;
   for (let i = 0; i < frames; i++) if (onsets[i] > maxO) maxO = onsets[i];
   if (maxO > 0) for (let i = 0; i < frames; i++) onsets[i] /= maxO;
+
   return { times, onsets };
 }
 
