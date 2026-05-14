@@ -314,8 +314,23 @@ export function computeBPMCurve(times, onsets, windowSec = 4, hopSec = 0.5) {
 
   for (let i = 0; i + winN < onsets.length; i += hopN) {
     const slice = onsets.slice(i, i + winN);
-    const bpm = estimateBPM(slice, fps);
-    if (bpm !== null) results.push({ t: times[i] + windowSec / 2, bpm });
+    let bpm = estimateBPM(slice, fps);
+    if (bpm === null) continue;
+
+    // Octave error correction — check against recent median to avoid
+    // locking onto a bad previous value propagating forward
+    if (results.length > 0) {
+      // Use median of last 4 readings as reference (more stable than just prev)
+      const recent = results.slice(-4).map((d) => d.bpm);
+      const sorted = [...recent].sort((a, b) => a - b);
+      const ref = sorted[Math.floor(sorted.length / 2)];
+
+      const ratio = bpm / ref;
+      if (ratio > 1.8 && ratio < 2.2) bpm = bpm / 2; // double tempo
+      if (ratio > 0.45 && ratio < 0.55) bpm = bpm * 2; // half tempo
+    }
+
+    results.push({ t: times[i] + windowSec / 2, bpm });
   }
   return results;
 }
