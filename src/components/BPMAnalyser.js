@@ -82,54 +82,56 @@ export default function BPMAnalyser() {
 
   return (
     <main className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.eyebrow}>
-          <span className={styles.eyebrowAccent}>Tempo Map</span>
-          <span className={styles.slash}>///</span>
-          <span className={styles.eyebrowDim}>BPM + KEY ANALYSER</span>
-        </div>
-        <h1 className={styles.heading}>
-          How does the tempo and key
-          <br />
-          <span className={styles.headingAccent}>change over time?</span>
-        </h1>
-        <p className={styles.sub}>
-          Drop any audio file. BPM and key are both analysed in sliding windows
-          so you can see tempo drift, modulations, and breakdowns — not just
-          single average values.
-        </p>
-      </header>
+      <div className={styles.hero}>
+        {/* ── Left: header + toggle ── */}
+        <header className={styles.header}>
+          <div className={styles.eyebrow}>
+            <span className={styles.eyebrowAccent}>Tempo Map</span>
+            <span className={styles.slash}>///</span>
+            <span className={styles.eyebrowDim}>BPM + KEY ANALYSER</span>
+          </div>
+          <h1 className={styles.heading}>
+            How does the tempo and key
+            <br />
+            <span className={styles.headingAccent}>change over time?</span>
+          </h1>
+          <p className={styles.sub}>
+            Drop any audio file. BPM and key are analysed in sliding windows so
+            you can see tempo drift, modulations, and breakdowns.
+          </p>
+          {BACKEND_CONFIGURED && (
+            <div className={styles.toggleWrap}>
+              <button
+                className={`${styles.toggleBtn} ${mode === "js" ? styles.toggleActive : ""}`}
+                onClick={() => setMode("js")}
+              >
+                <span className={styles.toggleDot} />
+                In-browser
+                <span className={styles.toggleTag}>instant</span>
+              </button>
+              <button
+                className={`${styles.toggleBtn} ${styles.toggleDisabled}`}
+                disabled
+                title="High accuracy analysis coming soon"
+              >
+                <span className={styles.toggleDot} />
+                High accuracy
+                <span className={styles.toggleTag}>librosa</span>
+              </button>
+            </div>
+          )}
+        </header>
 
-      {backendAvailable && (
-        <div className={styles.toggleWrap}>
-          <button
-            className={`${styles.toggleBtn} ${mode === "js" ? styles.toggleActive : ""}`}
-            onClick={() => setMode("js")}
-          >
-            <span className={styles.toggleDot} />
-            In-browser
-            <span className={styles.toggleTag}>instant</span>
-          </button>
-          <button
-            className={`${styles.toggleBtn} ${styles.toggleDisabled}`}
-            disabled
-            title="High accuracy analysis coming soon"
-          >
-            <span className={styles.toggleDot} />
-            High accuracy
-            <span className={styles.toggleTag}>librosa</span>
-          </button>
-        </div>
-      )}
-
-      <section className={styles.section}>
-        <DropZone
-          status={status}
-          progress={progress}
-          fileName={fileName}
-          onFile={analyse}
-        />
-      </section>
+        {/* ── Right: drop zone ── */}
+        <section className={styles.section}>
+          <DropZone
+            status={status}
+            progress={progress}
+            fileName={fileName}
+            onFile={analyse}
+          />
+        </section>
+      </div>
 
       {status === "done" && result && stats && (
         <section className={styles.section}>
